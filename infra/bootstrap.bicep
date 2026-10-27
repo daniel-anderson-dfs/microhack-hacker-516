@@ -3,8 +3,8 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 param namePrefix string = 'octocat'
 param environmentName string = 'lab'
-param githubRepository string
-param githubBranch string = 'challenge-5-deploy'
+@description('Exact GitHub OIDC sub claim, including immutable owner/repository IDs when enabled.')
+param githubSubject string
 param enableRegistryAdmin bool = false
 
 var baseName = '${namePrefix}-${environmentName}'
@@ -35,7 +35,7 @@ resource federation 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedI
   name: 'github-deploy'
   properties: {
     issuer: 'https://token.actions.githubusercontent.com'
-    subject: 'repo:${githubRepository}:ref:refs/heads/${githubBranch}'
+    subject: githubSubject
     audiences: ['api://AzureADTokenExchange']
   }
 }

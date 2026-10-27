@@ -31,7 +31,7 @@ target resource group. The group must already exist.
 az deployment group create --subscription <subscription-id> `
   --resource-group <resource-group> --name octocat-bootstrap `
   --template-file infra\bootstrap.bicep `
-  --parameters githubRepository=OWNER/REPO githubBranch=challenge-5-deploy
+  --parameters githubSubject='repo:OWNER@OWNER_ID/REPO@REPO_ID:ref:refs/heads/challenge-5-deploy'
 ```
 
 This defines ACR, an application pull identity with `AcrPull` on that registry,
@@ -53,8 +53,11 @@ Set these GitHub Actions **variables** (identifiers, not credentials):
 | `AZURE_LOCATION` | Resource group region |
 | `AZURE_ACR_NAME` | Bootstrap `registryName` output |
 
-The federated credential must match the exact workflow branch. Update
-`githubBranch` when moving deployment to `main`. No client secret is required.
+The federated credential must match the **exact subject claim** printed by the
+Azure login action. GitHub repositories using immutable IDs include
+`OWNER@OWNER_ID/REPO@REPO_ID`; do not replace that with the older `OWNER/REPO`
+format. Update `githubSubject` when moving deployment to `main`.
+No client secret is required.
 
 ## Repeatable deployment
 
