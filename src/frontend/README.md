@@ -1,5 +1,23 @@
 # React + TypeScript + Vite
 
+## Product search and filtering (TypeScript API)
+
+On `/products`, search by name, SKU or description and optionally select a supplier.
+Search is a case-insensitive literal substring match; search and supplier filters
+are combined. **Clear filters** restores the full catalogue. Loading, retry and
+no-results states keep the controls available.
+
+The catalogue calls `GET /api/products?search=cat&supplierId=1`. Both parameters
+are optional. Search is trimmed and limited to 200 characters; supplier IDs must
+be positive safe integers. Invalid parameters return HTTP 400. This feature
+requires the TypeScript API; the other API variants have not been updated.
+
+From `src`, run `make dev-ts` to demonstrate the feature. On Windows without
+Make, run `npm run dev` in `src\api-ts` and `src\frontend` in separate terminals
+using Node.js 24. Search for a product's SKU, select a supplier, then clear the
+filters to restore the catalogue. A search with no matches shows "No products
+found"; adding a matching product to the cart still uses the existing cart flow.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

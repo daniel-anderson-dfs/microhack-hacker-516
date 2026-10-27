@@ -9,17 +9,33 @@
  * @swagger
  * /api/products:
  *   get:
- *     summary: Returns all products
+ *     summary: Returns products matching optional search and supplier filters
  *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           maxLength: 200
+ *         description: Case-insensitive literal substring of name, SKU or description. Surrounding whitespace is ignored.
+ *       - in: query
+ *         name: supplierId
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 9007199254740991
+ *         description: Match this supplier, combined with search when both are supplied.
  *     responses:
  *       200:
- *         description: List of all products
+ *         description: Matching products, or all products when no filters are supplied
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Product'
+ *       400:
+ *         description: Invalid search or supplierId query parameter
  *   post:
  *     summary: Create a new product
  *     tags: [Products]
@@ -102,7 +118,7 @@
 import express from 'express';
 import { Product } from '../models/product';
 import { getProductsRepository } from '../repositories/productsRepo';
-import { NotFoundError } from '../utils/errors';
+import { NotFoundError, ValidationError } from '../utils/errors';
 
 const router = express.Router();
 
@@ -120,8 +136,19 @@ router.post('/', async (req, res, next) => {
 // Get all products
 router.get('/', async (req, res, next) => {
   try {
+    const { search, supplierId } = req.query;
+    if (search !== undefined && (typeof search !== 'string' || search.length > 200)) {
+      throw new ValidationError('Search must be a single string of at most 200 characters');
+    }
+    if (supplierId !== undefined && (typeof supplierId !== 'string' ||
+        !/^[1-9]\d*$/.test(supplierId) || !Number.isSafeInteger(Number(supplierId)))) {
+      throw new ValidationError('Supplier ID must be a single positive integer');
+    }
     const repo = await getProductsRepository();
-    const products = await repo.findAll();
+    const products = await repo.findAll({
+      search,
+      supplierId: supplierId === undefined ? undefined : Number(supplierId),
+    });
     res.json(products);
   } catch (error) {
     next(error);

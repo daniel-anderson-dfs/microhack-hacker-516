@@ -42,6 +42,11 @@
  *           format: float
  *           description: Discount percentage (if applicable) expressed as a decimal (e.g., 0.25 for 25%)
  */
+export interface ProductFilters {
+  search?: string;
+  supplierId?: number;
+}
+
 export interface Product {
   productId: number;
   supplierId: number;

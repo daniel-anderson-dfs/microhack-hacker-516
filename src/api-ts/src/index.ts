@@ -10,6 +10,7 @@ import orderRoutes from './routes/order';
 import branchRoutes from './routes/branch';
 import headquartersRoutes from './routes/headquarters';
 import supplierRoutes from './routes/supplier';
+import cartRoutes from './routes/cart';
 import { initializeDatabase } from './init-db';
 import { errorHandler } from './utils/errors';
 
@@ -34,7 +35,7 @@ console.log('Configured CORS origins:', corsOrigins);
 app.use(
   cors({
     origin: corsOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   }),
@@ -71,6 +72,7 @@ app.get('/api-docs.json', (req, res) => {
 });
 
 app.use(express.json());
+app.use('/api', cartRoutes);
 
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/order-detail-deliveries', orderDetailDeliveryRoutes);

@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.env*
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/data
+**/coverage
+**/test-results
+**/playwright-report
+**/.git
+api-cs
+api-cs-tests
+api-java
+api-py
+frontend
+docs

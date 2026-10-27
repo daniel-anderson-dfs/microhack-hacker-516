@@ -2,22 +2,24 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useState } from 'react';
+import { useCart } from '../context/useCart';
 
 export default function Navigation() {
   const { isLoggedIn, isAdmin, logout } = useAuth();
   const { darkMode, toggleTheme } = useTheme();
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const { cart } = useCart();
 
   return (
     <nav
       className={`${darkMode ? 'bg-dark/95' : 'bg-white/95'} backdrop-blur-sm fixed w-full z-50 shadow-md transition-colors duration-300`}
     >
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 gap-2">
           <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className="flex items-center" aria-label="OctoCAT Supply home">
               <img src="/copilot.png" alt="Copilot icon" className="h-8 w-auto" />
-              <div className="ml-2">
+              <div className="ml-2 hidden lg:block">
                 <span className={`text-xl font-bold ${darkMode ? 'text-light' : 'text-gray-800'}`}>
                   OctoCAT Supply
                 </span>
@@ -85,6 +87,10 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <Link to="/cart" aria-label={`Cart, ${cart.itemCount} items`}
+              className={`${darkMode ? 'text-light' : 'text-gray-800'} px-2 py-2 rounded-md focus-visible:outline focus-visible:outline-primary`}>
+              Cart <span className="bg-primary text-dark rounded-full px-2 py-1 text-sm tabular-nums">{cart.itemCount}</span>
+            </Link>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full focus:outline-none transition-colors"

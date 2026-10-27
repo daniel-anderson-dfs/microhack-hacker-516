@@ -3,6 +3,9 @@ import axios from 'axios';
 import { useQuery } from 'react-query';
 import { api } from '../../../api/config';
 import { useTheme } from '../../../context/ThemeContext';
+import { useCart } from '../../../context/useCart';
+import { cartErrorMessage } from '../../../api/cart';
+import ProductFilters from './ProductFilters';
 
 interface Product {
   productId: number;
@@ -16,48 +19,45 @@ interface Product {
   discount?: number;
 }
 
-const fetchProducts = async (): Promise<Product[]> => {
-  const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
-  return data;
-};
-
 export default function Products() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [supplierId, setSupplierId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const { data: products, isLoading, error } = useQuery('products', fetchProducts);
-  const { darkMode } = useTheme();
-
-  const filteredProducts = products?.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchTerm.toLowerCase()),
+  const search = searchTerm.trim();
+  const { data: products, isLoading, isError, refetch } = useQuery(
+    ['products', api.baseURL, search, supplierId],
+    async ({ signal }) => {
+      const { data } = await axios.get<Product[]>(`${api.baseURL}${api.endpoints.products}`, {
+        params: { search: search || undefined, supplierId: supplierId || undefined },
+        signal,
+      });
+      return data;
+    },
   );
-
-  // Inconsistent loop direction example: process products in reverse incorrectly
-  if (filteredProducts && filteredProducts.length === 0) {
-    for (let i = filteredProducts.length - 1; i > 5; ++i) {
-      filteredProducts[i].discount = 0;
-    }
-  }
+  const { darkMode } = useTheme();
+  const { mutation, pending } = useCart();
+  const [cartMessage, setCartMessage] = useState('');
 
   const handleQuantityChange = (productId: number, change: number) => {
     setQuantities((prev) => ({
       ...prev,
-      [productId]: Math.max(0, (prev[productId] || 0) + change),
+      [productId]: Math.min(999, Math.max(0, (prev[productId] || 0) + change)),
     }));
   };
 
-  const handleAddToCart = (productId: number) => {
+  const handleAddToCart = async (productId: number) => {
     const quantity = quantities[productId] || 0;
-    if (quantity > 0) {
-      // TODO: Implement cart functionality
-      alert(`Added ${quantity} items to cart`);
-      setQuantities((prev) => ({
-        ...prev,
-        [productId]: 0,
-      }));
+    if (quantity > 0 && !pending) {
+      setCartMessage('');
+      try {
+        await mutation.mutateAsync({ type: 'add', productId, quantity });
+        setCartMessage(`Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart.`);
+        setQuantities((prev) => ({ ...prev, [productId]: 0 }));
+      } catch {
+        // Keep the selected quantity available for a retry.
+      }
     }
   };
 
@@ -65,32 +65,6 @@ export default function Products() {
     setSelectedProduct(product);
     setShowModal(true);
   };
-
-  if (isLoading) {
-    return (
-      <div
-        className={`min-h-screen ${darkMode ? 'bg-dark' : 'bg-gray-100'} pt-20 px-4 transition-colors duration-300`}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div
-        className={`min-h-screen ${darkMode ? 'bg-dark' : 'bg-gray-100'} pt-20 px-4 transition-colors duration-300`}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="text-red-500 text-center">Failed to fetch products</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -103,31 +77,23 @@ export default function Products() {
           >
             Products
           </h1>
+          {cartMessage && <p role="status">{cartMessage}</p>}
+          {mutation.isError && <p role="alert">{cartErrorMessage(mutation.error)}</p>}
 
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full px-4 py-2 ${darkMode ? 'bg-gray-800 text-light border-gray-700' : 'bg-white text-gray-800 border-gray-300'} rounded-lg border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors duration-300`}
-              aria-label="Search products"
-            />
-            <svg
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors duration-300`}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-          </div>
+          <ProductFilters search={searchTerm} supplierId={supplierId}
+            onSearchChange={setSearchTerm} onSupplierChange={setSupplierId}
+            onClear={() => { setSearchTerm(''); setSupplierId(''); }} />
+          {isLoading && <p role="status" className={darkMode ? 'text-light' : 'text-gray-800'}>Loading products...</p>}
+          {isError && (
+            <div role="alert" className={darkMode ? 'text-light' : 'text-gray-800'}>
+              <p>Products could not be loaded. Check your connection and try again.</p>
+              <button type="button" onClick={() => { void refetch(); }}
+                className="mt-2 underline focus-visible:ring-2 focus-visible:ring-primary">Retry products</button>
+            </div>
+          )}
 
           {/* Empty state when no products match */}
-          {(!filteredProducts || filteredProducts.length === 0) && (
+          {!isLoading && !isError && products?.length === 0 && (
             <div
               className={`flex flex-col items-center justify-center text-center py-20 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'
                 } shadow-sm border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}
@@ -146,7 +112,7 @@ export default function Products() {
               <p className={`${darkMode ? 'text-light' : 'text-gray-800'} text-lg font-medium`}>
                 No products found
               </p>
-              {searchTerm && (
+              {(searchTerm || supplierId) && (
                 <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>
                   Try clearing or changing your search filters.
                 </p>
@@ -155,7 +121,7 @@ export default function Products() {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts?.map((product) => {
+            {!isError && products?.map((product) => {
               const hasDiscount = product.discount != null && product.discount > 0;
               return (
                 <div
@@ -213,6 +179,7 @@ export default function Products() {
                       >
                         <button
                           onClick={() => handleQuantityChange(product.productId, -1)}
+                          disabled={pending}
                           className={`w-8 h-8 flex items-center justify-center ${darkMode ? 'text-light' : 'text-gray-700'} hover:text-primary transition-colors duration-300`}
                           aria-label={`Decrease quantity of ${product.name}`}
                           id={`decrease-qty-${product.productId}`}
@@ -228,6 +195,7 @@ export default function Products() {
                         </span>
                         <button
                           onClick={() => handleQuantityChange(product.productId, 1)}
+                          disabled={pending || quantities[product.productId] === 999}
                           className={`w-8 h-8 flex items-center justify-center ${darkMode ? 'text-light' : 'text-gray-700'} hover:text-primary transition-colors duration-300`}
                           aria-label={`Increase quantity of ${product.name}`}
                           id={`increase-qty-${product.productId}`}
@@ -241,7 +209,7 @@ export default function Products() {
                           ? 'bg-primary hover:bg-accent text-white'
                           : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'} cursor-not-allowed`
                           }`}
-                        disabled={!quantities[product.productId]}
+                        disabled={pending || !quantities[product.productId]}
                         aria-label={`Add ${quantities[product.productId] || 0} ${product.name} to cart`}
                         id={`add-to-cart-${product.productId}`}
                       >

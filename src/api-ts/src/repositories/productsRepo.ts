@@ -3,7 +3,7 @@
  */
 
 import { getDatabase, DatabaseConnection } from '../db/sqlite';
-import { Product } from '../models/product';
+import { Product, ProductFilters } from '../models/product';
 import { handleDatabaseError, NotFoundError } from '../utils/errors';
 import { buildInsertSQL, buildUpdateSQL, objectToCamelCase, mapDatabaseRows, DatabaseRow } from '../utils/sql';
 
@@ -17,9 +17,24 @@ export class ProductsRepository {
   /**
    * Get all products
    */
-  async findAll(): Promise<Product[]> {
+  async findAll(filters: ProductFilters = {}): Promise<Product[]> {
     try {
-      const rows = await this.db.all<DatabaseRow>('SELECT * FROM products ORDER BY product_id');
+      const conditions: string[] = [];
+      const values: (string | number)[] = [];
+      const search = filters.search?.trim();
+      if (search) {
+        conditions.push(`(instr(lower(name), lower(?)) > 0 OR instr(lower(sku), lower(?)) > 0
+          OR instr(lower(COALESCE(description, '')), lower(?)) > 0)`);
+        values.push(search, search, search);
+      }
+      if (filters.supplierId !== undefined) {
+        conditions.push('supplier_id = ?');
+        values.push(filters.supplierId);
+      }
+      const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
+      const rows = await this.db.all<DatabaseRow>(
+        `SELECT * FROM products${where} ORDER BY product_id`, values,
+      );
       return mapDatabaseRows<Product>(rows);
     } catch (error) {
       handleDatabaseError(error);
