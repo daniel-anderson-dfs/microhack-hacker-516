@@ -43,16 +43,6 @@ module environment 'modules/containerapp-env.bicep' = {
   }
 }
 
-module storage 'modules/storage.bicep' = {
-  name: 'storage'
-  params: {
-    location: location
-    environmentId: environment.outputs.environmentId
-    storageAccountName: 'octocat${uniqueString(resourceGroup().id)}'
-    tags: tags
-  }
-}
-
 module apiApp 'modules/containerapp.bicep' = {
   name: 'api-app'
   params: {
@@ -64,12 +54,10 @@ module apiApp 'modules/containerapp.bicep' = {
     externalIngress: false
     registryLoginServer: registry.properties.loginServer
     identityId: pullIdentity.id
-    storageName: storage.outputs.storageName
     maxReplicas: 1
     tags: tags
     env: [
-      { name: 'DB_FILE', value: '/data/octocat.db' }
-      { name: 'DB_ENABLE_WAL', value: 'false' }
+      { name: 'DB_FILE', value: '/app/api-ts/data/app.db' }
       { name: 'NODE_ENV', value: 'production' }
     ]
   }

@@ -8,7 +8,6 @@ param registryLoginServer string
 param identityId string
 param env array = []
 param tags object = {}
-param storageName string = ''
 @minValue(1)
 param maxReplicas int = 1
 
@@ -45,6 +44,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         image: image
         resources: { cpu: json('0.5'), memory: '1Gi' }
         env: env
+        volumeMounts: []
         probes: [
           {
             type: 'Startup'
@@ -65,17 +65,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             failureThreshold: 3
           }
         ]
-        volumeMounts: empty(storageName) ? [] : [{
-          volumeName: 'database'
-          mountPath: '/data'
-        }]
       }]
-      volumes: empty(storageName) ? [] : [{
-        name: 'database'
-        storageType: 'AzureFile'
-        storageName: storageName
-        mountOptions: 'uid=1000,gid=1000,file_mode=0660,dir_mode=0770'
-      }]
+      volumes: []
       scale: {
         minReplicas: 1
         maxReplicas: maxReplicas

@@ -5,27 +5,21 @@ nginx frontend proxies `/api/` to the private API over HTTPS. Browser requests
 stay on the frontend origin. Images use immutable commit tags in ACR and are
 pulled using a managed identity, not registry passwords.
 
-## Lab storage and cost scope
+## Disposable demo storage and cost scope
 
-The API uses `/data/octocat.db` on a 5 GiB Azure Files share, one replica and a
-rollback journal (`DB_ENABLE_WAL=false`). The initial storage deployment starts
-with fresh seeded demo data; it does not migrate an old container's database.
-Subsequent revisions reuse the share. The frontend can scale to two replicas.
+The API uses `/app/api-ts/data/app.db` in its container. **Carts and orders are
+lost on API container replacement, restart or deployment.** Each fresh instance
+starts with the sample seed data. This behavior was explicitly approved for the
+lab after organization policies prevented the proposed account-key Azure Files
+mount. No storage policies are changed or bypassed.
 
-This is **lab-scale persistence, not a production database architecture**.
-SQLite over a network filesystem has locking, performance and durability
-limitations. Do not enable WAL, disable file locks, or scale the API horizontally.
-Use a managed client/server database before production.
+The API stays at one replica to avoid independent databases serving different
+requests. The frontend can scale to two replicas. Production persistence needs
+a separately designed, policy-compliant private-network database.
 
-This non-VNet lab uses an authenticated public Azure Files endpoint with
-account-key SMB access. The key is resolved by Bicep into the environment's
-storage definition, not committed or passed to the browser. Anonymous blob
-access is disabled. A private-network production design requires separate work.
-
-ACR Basic, Standard LRS storage and Consumption compute limit the footprint.
+ACR Basic and Consumption compute limit the footprint.
 The approved lab budget is USD 1,000 total; this configuration is not a hard
 spending cap. Resources continue to incur charges until stopped or removed.
-Retain the storage account if carts and orders must be preserved.
 
 ## One-time identity bootstrap
 
@@ -83,4 +77,5 @@ docker build -t octocat-frontend src\frontend
 
 After deployment, open the workflow summary URL. On `/products`, search by SKU,
 filter by supplier, clear the filters, then add an item to the cart and reload.
-Verify storage retention across an API revision restart before ending the lab.
+Page reload retains the cart while the same API instance is running; an API
+restart or deployment does not.
