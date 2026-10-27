@@ -17,6 +17,11 @@ SQLite over a network filesystem has locking, performance and durability
 limitations. Do not enable WAL, disable file locks, or scale the API horizontally.
 Use a managed client/server database before production.
 
+This non-VNet lab uses an authenticated public Azure Files endpoint with
+account-key SMB access. The key is resolved by Bicep into the environment's
+storage definition, not committed or passed to the browser. Anonymous blob
+access is disabled. A private-network production design requires separate work.
+
 ACR Basic, Standard LRS storage and Consumption compute limit the footprint.
 The approved lab budget is USD 1,000 total; this configuration is not a hard
 spending cap. Resources continue to incur charges until stopped or removed.
@@ -63,7 +68,8 @@ No client secret is required.
 
 Run **Deploy Octocat to Azure** from GitHub Actions on the configured branch.
 The workflow builds both applications, runs existing API tests, builds and
-pushes images, deploys `main.bicep`, and checks the frontend and proxied API.
+pushes images, deploys `main.bicep`, waits for the exact new revisions to become
+ready, and checks the frontend and proxied API.
 No new test files are introduced by this deployment work.
 
 `main.parameters.json` supplies the `octocat`/`lab` resource names; image tags

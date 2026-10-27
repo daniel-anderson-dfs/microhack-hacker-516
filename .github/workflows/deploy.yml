@@ -71,6 +71,28 @@ jobs:
               apiImage="$LOGIN_SERVER/api:$IMAGE_TAG" \
               frontendImage="$LOGIN_SERVER/frontend:$IMAGE_TAG" \
             --output none
+      - name: Wait for the deployed revisions to become ready
+        run: |
+          for APP in octocat-lab-api octocat-lab-frontend; do
+            EXPECTED="$LOGIN_SERVER/${APP##*-}:$IMAGE_TAG"
+            READY=false
+            for ATTEMPT in $(seq 1 60); do
+              INFO=$(az containerapp show --name "$APP" --resource-group "$RESOURCE_GROUP" -o json)
+              LATEST=$(jq -r '.properties.latestRevisionName' <<< "$INFO")
+              SERVING=$(jq -r '.properties.latestReadyRevisionName' <<< "$INFO")
+              IMAGE=$(jq -r '.properties.template.containers[0].image' <<< "$INFO")
+              if [[ "$LATEST" != "null" && "$LATEST" == "$SERVING" && "$IMAGE" == "$EXPECTED" ]]; then
+                READY=true
+                break
+              fi
+              echo "Waiting for $APP revision $LATEST (ready: $SERVING)"
+              sleep 10
+            done
+            if [[ "$READY" != "true" ]]; then
+              echo "::error::$APP did not become ready with the expected image"
+              exit 1
+            fi
+          done
       - name: Verify public frontend and API
         run: |
           URL=$(az deployment group show --name octocat-lab --resource-group "$RESOURCE_GROUP" \

@@ -13,6 +13,9 @@ resource account 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
+    // The non-VNet lab environment mounts SMB using an account key.
+    publicNetworkAccess: 'Enabled'
+    allowSharedKeyAccess: true
   }
 }
 
